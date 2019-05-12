@@ -1,7 +1,8 @@
-# espServer
-Embedded Wifi Server / Captive Portal in MicroPython
-# Captive Portal Web Server for esp32
-### and maybe esp8266, eventually
+# espServer - Embedded Wifi Server / Captive Portal in MicroPython
+### Captive Portal Web Server for esp32 -- and maybe esp8266, eventually
+*a little wifi hotspot with a web server that could share content or apps where there is no internet connection, possible to be battery powered for hours (days?)*
+
+---
 
 This allows for a small, battery-operated webserver to be stood up in places where there is no network connectivity.
 This could be used for event coordination, to provide social connectivity in areas with no WiFi (perhaps in demographic areas with limited connectivity), or to help provide communications in emergency or disaster situations.
