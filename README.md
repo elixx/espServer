@@ -13,7 +13,7 @@ This was tested against MicroPython firmware `esp32-20190511-v1.10-338-gf812394c
 
 This uses [jczic/MicroWebSrv](https://github.com/jczic/MicroWebSrv) 
 
-** Setup **
+#### Setup
 
 Copy the following files to your device:
 
