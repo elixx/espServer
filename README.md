@@ -2,14 +2,20 @@
 ### Captive Portal Web Server for esp32 -- and maybe esp8266, eventually
 *a little wifi hotspot with a web server that could share content or apps where there is no internet connection, possible to be battery powered for hours (days?)*
 
----
-
 This allows for a small, battery-operated webserver to be stood up in places where there is no network connectivity.
 This could be used for event coordination, to provide social connectivity in areas with no WiFi (perhaps in demographic areas with limited connectivity), or to help provide communications in emergency or disaster situations.
 
+---
+
+#### Tech Details
+
 This was tested against MicroPython firmware `esp32-20190511-v1.10-338-gf812394c3.bin` on a bootleg [LOLIN32](https://docs.platformio.org/en/latest/boards/espressif32/lolin32.html) board.
 
-This uses [jczic/MicroWebSrv](https://github.com/jczic/MicroWebSrv) and requires the following files on your device:
+This uses [jczic/MicroWebSrv](https://github.com/jczic/MicroWebSrv) 
+
+** Setup **
+
+Copy the following files to your device:
 
 * esp32thing.py
 * [microWebSrv.py](https://github.com/jczic/MicroWebSrv)
