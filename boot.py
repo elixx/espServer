@@ -19,5 +19,12 @@ def wifi_connect(essid,password=''):
             pass
     print('network config:', wlan.ifconfig())
 
+def read(path):
+    f=open(path,'r')
+    print("["+path+"]:")
+    for line in f.readlines():
+        print(line,end='')
+    f.close()
+
 import esp32thing
 esp32thing.run()
