@@ -3,15 +3,41 @@ from time import sleep
 from _thread import start_new_thread
 from MicroWebSrv import MicroWebSrv
 
-global MyName
+global MyName, debug, ip
 MyName = "ESPSERVER"
+debug = True
 
-ap = network.WLAN(network.AP_IF)
-ap.active(True)
-ap.config(dhcp_hostname=MyName, essid=MyName, authmode=network.AUTH_OPEN)
-global ip
-ip =  ap.ifconfig()[0]
-print('my IP is ',str(ip))
+def wifi_connect(essid,password=''):
+    import network
+    global ip
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        print('connecting to network...')
+        wlan.connect(essid, password)
+        while not wlan.isconnected():
+            pass
+    print('network config:', wlan.ifconfig())
+    ip =  wlan.ifconfig()[0]
+
+if(debug):
+    q = input("run access point? (Y/N) ")
+    if q in ['y','Y']:
+        ap = network.WLAN(network.AP_IF)
+        ap.active(True)
+        ap.config(dhcp_hostname=MyName, essid=MyName, authmode=network.AUTH_OPEN)
+        ip =  ap.ifconfig()[0]
+    else:
+        q = input("connect to wifi? (Y/N) ")
+        if q in ['y','Y']:
+            essid = input("ESSID? ")
+            password = input("Password? ")
+            wifi_connect(essid,password)
+
+if(ip is not None):
+    print('my IP is',ip)
+else:
+    print('not online.')
 
 try:
   import usocket as socket
@@ -58,8 +84,20 @@ def run_dns():
             sleep(.1)
 
 def run():
-    global ip
-    start_new_thread(run_dns, ())
-    mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
-    mws.SetNotFoundPageUrl("http://"+ip)
-    mws.Start(threaded=True)
+    global ip, debug
+    if(debug):
+        q = input("run dns server? (y/n)")
+        if q in ['y','Y']:
+            start_new_thread(run_dns, ())
+    else:
+        start_new_thread(run_dns, ())
+    if(debug):
+        q = input("run web server? (y/n)")
+        if q in ['y','Y']:
+            mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
+            mws.SetNotFoundPageUrl("http://"+ip)
+            mws.Start(threaded=True)
+    else:
+        mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
+        mws.SetNotFoundPageUrl("http://"+ip)
+        mws.Start(threaded=True)
