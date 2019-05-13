@@ -5,7 +5,8 @@ from MicroWebSrv import MicroWebSrv
 
 global MyName, debug, ip
 MyName = "ESPSERVER"
-debug = True
+debug = False
+ip = "0.0.0.0"
 
 def wifi_connect(essid,password=''):
     import network
@@ -20,21 +21,30 @@ def wifi_connect(essid,password=''):
     print('network config:', wlan.ifconfig())
     ip =  wlan.ifconfig()[0]
 
-if(debug):
+if(debug==True):
     q = input("run access point? (Y/N) ")
     if q in ['y','Y']:
         ap = network.WLAN(network.AP_IF)
         ap.active(True)
         ap.config(dhcp_hostname=MyName, essid=MyName, authmode=network.AUTH_OPEN)
-        ip =  ap.ifconfig()[0]
+        sleep(.2)
+        ip = ap.ifconfig()[0]
     else:
         q = input("connect to wifi? (Y/N) ")
         if q in ['y','Y']:
             essid = input("ESSID? ")
             password = input("Password? ")
             wifi_connect(essid,password)
+        else:
+            pass
+else:
+    ap = network.WLAN(network.AP_IF)
+    ap.active(True)
+    ap.config(dhcp_hostname=MyName, essid=MyName, authmode=network.AUTH_OPEN)
+    sleep(.2)
+    ip = ap.ifconfig()[0]
 
-if(ip is not None):
+if(ip != "0.0.0.0"):
     print('my IP is',ip)
 else:
     print('not online.')
@@ -85,19 +95,23 @@ def run_dns():
 
 def run():
     global ip, debug
-    if(debug):
+
+    if(debug==True):
         q = input("run dns server? (y/n)")
         if q in ['y','Y']:
             start_new_thread(run_dns, ())
     else:
         start_new_thread(run_dns, ())
-    if(debug):
+
+    if(debug==True):
         q = input("run web server? (y/n)")
         if q in ['y','Y']:
             mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
             mws.SetNotFoundPageUrl("http://"+ip)
             mws.Start(threaded=True)
+            print("web server started.")
     else:
         mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
         mws.SetNotFoundPageUrl("http://"+ip)
         mws.Start(threaded=True)
+        print("web server started.")
