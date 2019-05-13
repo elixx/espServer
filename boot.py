@@ -21,4 +21,3 @@ def wifi_connect(essid,password=''):
 
 import esp32thing
 esp32thing.run()
-

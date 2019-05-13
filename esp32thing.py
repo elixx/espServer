@@ -3,9 +3,12 @@ from time import sleep
 from _thread import start_new_thread
 from MicroWebSrv import MicroWebSrv
 
+global MyName
+MyName = "ESPSERVER"
+
 ap = network.WLAN(network.AP_IF)
 ap.active(True)
-ap.config(dhcp_hostname="RADiANCE", essid="RADiANCE", authmode=network.AUTH_OPEN)
+ap.config(dhcp_hostname=MyName, essid=MyName, authmode=network.AUTH_OPEN)
 global ip
 ip =  ap.ifconfig()[0]
 print('my IP is ',str(ip))
