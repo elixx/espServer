@@ -1,0 +1,23 @@
+<HTML>
+  <HEAD>
+  <TITLE>espServer</TITLE>
+      {{ py }}
+      from utils import sys_stats
+      {{ end }}
+  </HEAD>
+
+  <BODY>
+
+  <P>
+    <DIV STYLE="align: center;">
+      ESPServer is Working!
+    </DIV>
+  </P>
+    <PRE>
+
+      {{ sys_stats() }}
+
+    </PRE>
+  </BODY>
+</HTML>
+
