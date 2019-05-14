@@ -1,25 +1,15 @@
 import network
 from time import sleep
-from _thread import start_new_thread
-from MicroWebSrv import MicroWebSrv
 
-global MyName, debug, ip
+global MyName, debug, debugDNS, ip
+### CONFIGURE THESE SETTINGS: ####
 MyName = "ESPSERVER"
-debug = False
-ip = "0.0.0.0"
-
-def wifi_connect(essid,password=''):
-    import network
-    global ip
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    if not wlan.isconnected():
-        print('connecting to network...')
-        wlan.connect(essid, password)
-        while not wlan.isconnected():
-            pass
-    print('network config:', wlan.ifconfig())
-    ip =  wlan.ifconfig()[0]
+debug = False        # prompt for all startup options
+debugDNS = False     # dump DNS queries
+runDNS = True
+runWeb = True
+threaded = False     # allow interactive while running MicroWebSrv
+##################################
 
 if(debug==True):
     q = input("run access point? (Y/N) ")
@@ -32,9 +22,10 @@ if(debug==True):
     else:
         q = input("connect to wifi? (Y/N) ")
         if q in ['y','Y']:
+            from utils import wifi_connect
             essid = input("ESSID? ")
             password = input("Password? ")
-            wifi_connect(essid,password)
+            ip = wifi_connect(essid,password)
         else:
             pass
 else:
@@ -44,10 +35,11 @@ else:
     sleep(.2)
     ip = ap.ifconfig()[0]
 
-if(ip != "0.0.0.0"):
+try:
+    ip
     print('my IP is',ip)
-else:
-    print('not online.')
+except NameError:
+    print("Not online.")
 
 try:
   import usocket as socket
@@ -76,42 +68,51 @@ def response(packet):
         bip])                    # Answer data
 
 def run_dns():
-    print("dns server started")
+    global ip, debugDNS
     dnsserver = socket.socket(socket.AF_INET,
                               socket.SOCK_DGRAM)
     dnsserver.setsockopt(socket.SOL_SOCKET,
                          socket.SO_REUSEADDR,
                          1)
     dnsserver.bind(('0.0.0.0', 53))
-    # dnsserver.setblocking(True)
+    #dnsserver.setblocking(True)
+    print("dns server starting...")
     while True:
         (packet, cliAddr) = dnsserver.recvfrom(256)
-        print("<53",cliAddr, packet)
+        qs = str(packet[13:])
+        if debugDNS: print("<53",cliAddr, qs.replace('\\x03','.').replace('\\x0f','.').replace('\\x00',' ').replace('\\x07','.'))
         packet = response(packet)
         if packet:
             dnsserver.sendto(packet, cliAddr)
-            print(">53",cliAddr, packet)
-            sleep(.1)
+            qr = str(packet[13:])
+            if debugDNS: print(">53",cliAddr, ip)
+
+def run_web(threaded):
+    from microWebSrv import MicroWebSrv
+    mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
+    mws.SetNotFoundPageUrl("http://"+ip)
+    print("web server starting at http://" + ip + "/ .")
+    mws.Start(threaded=threaded)
 
 def run():
-    global ip, debug
+    from _thread import start_new_thread
+    global ip, debug, threaded
 
     if(debug==True):
-        q = input("run dns server? (y/n)")
+        q = input("run dns server? (y/n) ")
         if q in ['y','Y']:
             start_new_thread(run_dns, ())
     else:
-        start_new_thread(run_dns, ())
+        if(runDNS): start_new_thread(run_dns, ())
 
     if(debug==True):
-        q = input("run web server? (y/n)")
+        q = input("run web server? (y/n) ")
         if q in ['y','Y']:
-            mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
-            mws.SetNotFoundPageUrl("http://"+ip)
-            mws.Start(threaded=True)
-            print("web server started.")
+            t = input("run www threaded? (y/n) ")
+            if(t in ['N','n']):
+                threaded = False
+            elif(t in ['Y','y']):
+                threaded = True
+            run_web(threaded)
     else:
-        mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")
-        mws.SetNotFoundPageUrl("http://"+ip)
-        mws.Start(threaded=True)
-        print("web server started.")
+        if(runWeb): run_web(threaded)

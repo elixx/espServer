@@ -1,0 +1,10 @@
+#!/bin/bash
+export aa="ampy -p /dev/ttyUSB0"
+echo "Removing $1"
+if [[ -d "$1" ]] ; then
+  time $aa rmdir $1 || echo "fail"
+elif [[ -f "$1" ]] ; then
+  time $aa rm $1 || echo "fail"
+fi
+echo
+echo "Putting $1" && time $aa put $1 | grep total
