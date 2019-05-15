@@ -23,8 +23,7 @@ if(debug==True):
             pass
     q = input("start webrepl?")
     if q in ['Y','y']:
-        import webrepl
-        webrepl.start()
+        runREPL = True
 
 else:
 
@@ -43,17 +42,21 @@ else:
     except:
         ap = network.WLAN(network.AP_IF)
         ap.active(True)
+        from time import sleep
+        sleep(1)
         ap.config(dhcp_hostname=MyName, essid=MyName, authmode=network.AUTH_OPEN)
         ip = ap.ifconfig()[0]
 
 try:
-    ip
     print('my IP is',ip)
 except NameError:
     print("Not online.")
 
 if(runREPL):
     import webrepl
+    from utils import replaceRe
+    pat = "ws://(.*)\:8266/"
+    replaceRe('/www/webrepl.html',pat,"ws://"+ip+":8266/")
     webrepl.start()
 
 def response(packet):
@@ -105,7 +108,7 @@ def run_dns():
 def run_web(threaded):
     from microWebSrv import MicroWebSrv
 
-    def delayed_reboot(delay=10):
+    def delayed_reboot(delay=2):
         from time import sleep
         from machine import reset
         sleep(1)
@@ -113,16 +116,20 @@ def run_web(threaded):
 ####################################### URL Route handling #################################
     @MicroWebSrv.route('/config')
     def _httpHandlerConfig(httpClient, httpResponse, args={}) :
-        from utils import sys_config
+        from utils import sys_config_html
         content = """\
             <!DOCTYPE html>
             <html lang=en>
             <head>
                 <meta charset="UTF-8" />
-                <title>Config Dump</title>
+                <title>CONFIG DUMP</title>
             </head>
             <body><PRE>"""
-        content += sys_config()
+        content += sys_config_html()
+        content += '<div style="alignt: center; text-align: center;">\n'
+        content += '<P><h3><a href="/stats">status</a></h3></P>'
+        content += "<br /><h5><a href=\"/config/reboot\">REBOOT?</A></h5>\n"
+        content += "</div>"
         content += """\
             </PRE>
             </body>
@@ -143,11 +150,12 @@ def run_web(threaded):
             <html lang=en>
             <head>
                 <meta charset="UTF-8" />
-                <meta http-equiv="refresh" content="3;url=/" />
+                <meta http-equiv="refresh" content="5;url=/" />
                 <title>C U NEXT TUESDAY...</title>
             </head>
-            <body>
-            </body>
+            <body><BR /><HR /><br />
+            <P><center><img src="/reboot.gif"></center></P>
+            <BR /><HR /><br /></body>
             </html>
             """
         httpResponse.WriteResponseOk( headers            = None,
@@ -155,87 +163,7 @@ def run_web(threaded):
                                       contentCharset = "UTF-8",
                                       content                = content )
 ############################################################
-    @MicroWebSrv.route('/config/<param>/<value>')
-    @MicroWebSrv.route('/config/<param>')
-    def _httpHandlerEditParams(httpClient, httpResponse, args={}) :
-        from utils import replaceRe, findValue
-        content = """\
-            <!DOCTYPE html>
-            <html lang=en>
-            <head>
-                    <meta charset="UTF-8" />
-                <title>-=DAT CONFIG=-</title>
-            </head>
-            <body>
-            """
-        content += "<h3>CONFIG REQUEST</h3>"
-        if 'param' in args :
-            param = args['param'].strip()
-            print("param",param)            
-            oldline = findValue('/config.py',param)
-            content += "<p>[config: {}]</p>".format(oldline)
-            content += "<br />"
-        if 'value' in args :
-            if(type(args['value']) == int):
-                value = str(args['value'])
-            else:
-                value = args['value'].strip()
-            print("value",value)
-            content += "<p>[new value is {}]</p>".format(value)
-            content += "<br />"
-        if( ('value' in args) and ('param' in args) ):
-            re = args['param'].strip() + " = ([A-Za-z\"]+)"
-            print("re",re)
-            if((value == str(1)) or ('rue' in value)):
-                value = "True"
-            elif((value == str(0)) or ('alse' in value)):
-                value = "False"
-            else:
-                value = '"' + value + '"'
-            newline = args['param'].strip() + " = " + value + "\n"
-            print("NEWLINE = ",newline)
-            content += "<P>" + newline + "</P><BR />"
-            print("************* before")
-            replaceRe("/config.py",re,newline)
-            print("*************  ")            
-            content += "<p>parameters updated.</p>"
-            content += "<br /><CENTER><a href=\"/config/reboot\">REBOOT</A></CENTER>"
-        content += """
-            </body>
-        </html>
-            """
-        httpResponse.WriteResponseOk( headers            = None,
-                                      contentType    = "text/html",
-                                      contentCharset = "UTF-8",
-                                      content                = content )
-############################################################
-    @MicroWebSrv.route('/stats')
-    def _httpHandlerStats(httpClient, httpResponse, args={}) :
-        from utils import sys_stats, sys_config
-        global MyName, debug, debugDNS, ip, runREPL, runDNS, runWeb, threaded
-        content = """\
-            <!DOCTYPE html>
-            <html lang=en>
-            <head>
-                    <meta charset="UTF-8" />
-                    <meta http-equiv="refresh" content="2" />
-                <title>STATUS ORGASM</title>
-            </head>
-            <body>
-            """
-
-        content += "<h2>SYSTEM STATS</h2>\n<PRE>" + sys_stats() + "</PRE>\n"
-        content += "<H2>SYSTEM CONFIG</H2>\n<PRE>" + sys_config() + "</PRE>\n"
-        content += """
-            </body>
-        </html>
-            """
-        httpResponse.WriteResponseOk( headers            = None,
-                                      contentType    = "text/html",
-                                      contentCharset = "UTF-8",
-                                      content                = content )
-############################################################
-    @MicroWebSrv.route('/toggle')
+    @MicroWebSrv.route('/config/toggleAP')
     def _httpHandlerToggle(httpClient, httpResponse, args={}) :
         from os import rename
         apMode = None
@@ -263,8 +191,16 @@ def run_web(threaded):
             """
         if(apMode):
             content += "<H2>Switched to Wifi Client Mode</H2>"
+            content += '<div style="alignt: center; text-align: center;">\n'
+            content += '<P><h3><a href="/config/">config</a></h3></P>'
+            content += "<br /><h5><a href=\"/config/reboot\">REBOOT?</A></h5>\n"
+            content += "</div>"
         else:
             content += "<H2>Switched to Wifi AP Mode</H2>"
+            content += '<div style="alignt: center; text-align: center;">\n'
+            content += '<P><h3><a href="/config/">config</a></h3></P>'
+            content += "<br /><h5><a href=\"/config/reboot\">REBOOT?</A></h5>\n"
+            content += "</div>"
         content += """\
             </body>
         </html>
@@ -273,6 +209,122 @@ def run_web(threaded):
                                       contentType    = "text/html",
                                       contentCharset = "UTF-8",
                                       content                = content )
+##############################################
+    @MicroWebSrv.route('/config/<param>/<value>')
+    def _httpHandlerEditParams(httpClient, httpResponse, args={}) :
+        from utils import replaceLine, findValue
+        content = """\
+            <!DOCTYPE html>
+            <html lang=en>
+            <head>
+                    <meta charset="UTF-8" />
+                <title>-=DAT CONFIG=-</title>
+            </head>
+            <body>
+            """
+        content += "<h3>CONFIG UPDATE</h3>"
+        if 'param' in args :
+            param = args['param'].strip()
+            oldline = findValue('/config.py',param)
+            content += "<p>[config: {}]</p>".format(oldline)
+            content += "<br />"
+        if 'value' in args :
+            if(type(args['value']) == int):
+                value = str(args['value'])
+            else:
+                value = args['value'].strip()
+            content += "<p>[new value is {}]</p>".format(value)
+            content += "<br />"
+        if( ('value' in args) and ('param' in args) ):
+            #re = args['param'].strip() + " = ([A-Za-z\"]+)"
+            re = oldline
+            if((value == str(1)) or ('rue' in value)):
+                value = "True"
+            elif((value == str(0)) or ('alse' in value)):
+                value = "False"
+            else:
+                value = '"' + value + '"'
+            newline = args['param'].strip() + " = " + value + "\n"
+            content += "<P>" + newline + "</P><BR />"
+            print("CONFIGURE:",param,' - ',value,' - ', re, '\n',newline)
+
+            replaceLine("/config.py",re,newline)
+
+            content += "<p>parameters updated.</p>"
+            content += '<div style="alignt: center; text-align: center;">\n'
+            content += '<P><h3><a href="/config/">config</a></h3></P>'
+            content += "<br /><h5><a href=\"/config/reboot\">REBOOT?</A></h5>\n"
+            content += "</div>"
+        content += """
+            </body>
+        </html>
+            """
+        httpResponse.WriteResponseOk( headers            = None,
+                                      contentType    = "text/html",
+                                      contentCharset = "UTF-8",
+                                      content                = content )
+
+############################################################
+    @MicroWebSrv.route('/config/<param>')
+    def _httpHandlerEditParams(httpClient, httpResponse, args={}) :
+        from utils import findValue
+        content = """\
+            <!DOCTYPE html>
+            <html lang=en>
+            <head>
+                    <meta charset="UTF-8" />
+                <title>-=DAT CONFIG=-</title>
+            </head>
+            <body>
+            """
+        content += "<h3>CONFIG REQUEST</h3>"
+        if 'param' in args :
+            param = args['param'].strip()
+            oldline = findValue('/config.py',param)
+            content += "<p>[config: {}]</p>".format(oldline)
+            content += "<br />"
+            content += '<div style="alignt: center; text-align: center;">\n'
+            content += "<P><h5><a href='/config/" + param + "/1'>enable</a> / <a href='/config/" + param + "/0'>disable</a></h5></P>"
+            content += '<P><h3><a href="/config/">config</a></h3></P>'
+            content += "</div>"
+        content += """
+            </body>
+        </html>
+            """
+        httpResponse.WriteResponseOk( headers            = None,
+                                      contentType    = "text/html",
+                                      contentCharset = "UTF-8",
+                                      content                = content )
+############################################################
+    @MicroWebSrv.route('/stats')
+    @MicroWebSrv.route('/status')    
+    def _httpHandlerStats(httpClient, httpResponse, args={}) :
+        from utils import sys_stats, sys_config
+        global MyName, debug, debugDNS, ip, runREPL, runDNS, runWeb, threaded
+        content = """\
+            <!DOCTYPE html>
+            <html lang=en>
+            <head>
+                    <meta charset="UTF-8" />
+                    <meta http-equiv="refresh" content="2" />
+                <title>STATUS ORGASM</title>
+            </head>
+            <body>
+            """
+
+        content += "<h2>SYSTEM STATS</h2>\n<PRE>" + sys_stats() + "</PRE>\n"
+        content += "<H2>SYSTEM CONFIG</H2>\n<PRE>" + sys_config() + "</PRE>\n"
+        content += "<h5><a href='/config'>configure</a></h5>"
+        content += "<h3><a href='/'>HOME</a></h5>"
+        content += """
+            </body>
+        </html>
+            """
+        httpResponse.WriteResponseOk( headers            = None,
+                                      contentType    = "text/html",
+                                      contentCharset = "UTF-8",
+                                      content                = content )
+
 ############################################ End of Routes ##################################################
 
     mws = MicroWebSrv(port=80, bindIP='0.0.0.0', webPath="/www")

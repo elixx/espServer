@@ -3,7 +3,7 @@ MyName = "ESPSERVER"
 debug = False
 debugDNS = False
 runREPL = True
-runDNS =  False
+runDNS =  True
 runWeb = True
 threaded = True
 ##################################
