@@ -108,10 +108,10 @@ def run_dns():
 def run_web(threaded):
     from microWebSrv import MicroWebSrv
 
-    def delayed_reboot(delay=2):
+    def delayed_reboot(delay=3.5):
         from time import sleep
         from machine import reset
-        sleep(1)
+        sleep(delay)
         reset()
 ####################################### URL Route handling #################################
     @MicroWebSrv.route('/config')
@@ -150,7 +150,7 @@ def run_web(threaded):
             <html lang=en>
             <head>
                 <meta charset="UTF-8" />
-                <meta http-equiv="refresh" content="5;url=/" />
+                <meta http-equiv="refresh" content="8;url=/" />
                 <title>C U NEXT TUESDAY...</title>
             </head>
             <body><BR /><HR /><br />
